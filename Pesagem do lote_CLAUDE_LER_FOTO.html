@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pesagem do lote</title>
+<style>
+:root{--bg:#eef2ea;--surface:#fff;--ink:#1d2b22;--muted:#5d6e62;--accent:#1f6b4a;--on-accent:#fff;--line:#cbd5c4;--danger:#b3261e;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a15;--surface:#1b261f;--ink:#e6eee6;--muted:#9bb0a0;--accent:#5fcb95;--on-accent:#0c1a12;--line:#2d3c32;--danger:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121a15;--surface:#1b261f;--ink:#e6eee6;--muted:#9bb0a0;--accent:#5fcb95;--on-accent:#0c1a12;--line:#2d3c32;--danger:#ff8a80;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:1.25rem;margin:4px 0 16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.row{display:flex;gap:10px}
+.row>label{flex:1;min-width:0}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+input{width:100%;font:inherit;font-size:1.5rem;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+input:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+.add{width:100%;margin-top:12px;padding:16px;font-size:1.2rem;font-weight:700;border:0;border-radius:10px;background:var(--accent);color:var(--on-accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat span{display:block;font-size:.85rem;color:var(--muted)}
+.stat b{font-size:1.5rem}
+.stat.big{grid-column:1/-1;padding-top:12px;border-top:1px solid var(--line)}
+.stat.big b{font-size:2rem;color:var(--accent)}
+.price input{font-size:1.25rem}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+li:last-child{border-bottom:0}
+li .n{flex:1;min-width:0;overflow-wrap:anywhere}
+li .w{font-weight:700}
+li .v{color:var(--muted);font-size:.9rem;min-width:84px;text-align:right}
+.del{border:0;background:none;color:var(--danger);font-size:1.3rem;padding:6px 10px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.head h2{font-size:1rem;margin:0}
+.clear{border:1px solid var(--line);background:none;color:var(--danger);border-radius:8px;padding:6px 12px}
+.empty{color:var(--muted);margin:8px 0 0}
+.exp{display:flex;gap:10px;margin-top:14px}.exp[hidden]{display:none}
+textarea{width:100%;font:inherit;padding:10px;margin-top:8px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+summary{cursor:pointer;font-weight:700}.exp button{flex:1;padding:12px;font-weight:700;border:2px solid var(--accent);border-radius:10px;background:none;color:var(--accent)}
+.add:disabled{opacity:.45;cursor:not-allowed}
+.file{margin-top:10px}.file input{font-size:.9rem;padding:8px;margin-top:4px}
+#prev{color:var(--ink)}
+</style>
+</head>
+<body>
+<main>
+<h1>Pesagem do lote</h1>
+
+<section class="card">
+  <div class="row">
+    <label>Brinco ou nome<input id="id" type="text" autocomplete="off" placeholder="automático"></label>
+    <label>Peso (kg)<input id="peso" type="text" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+  </div>
+  <button class="add" id="add">Anotar peso</button>
+</section>
+
+<section class="card">
+  <details><summary>Importar lista de pesos</summary>
+  <p class="empty">Cole uma linha por animal, com brinco e peso. Pode colar do Excel ou do WhatsApp.</p>
+  <textarea id="lote" rows="6" placeholder="D6941 403&#10;D6965 - 432,5 kg&#10;D6970;418"></textarea>
+  <div id="foto"><label class="file">Ler de uma foto da folha<input id="fotoarq" type="file" accept="image/*"></label><p class="empty" id="fotomsg"></p></div>
+  <label class="file">ou escolha um arquivo (.txt ou .csv)<input id="arq" type="file" accept=".txt,.csv,text/plain,text/csv"></label>
+  <p class="empty" id="prev"></p>
+  <button class="add" id="imp" disabled>Importar</button>
+  <p class="empty" id="impmsg"></p></details>
+</section>
+
+<section class="card">
+  <div class="grid">
+    <div class="stat"><span>Animais</span><b id="qtd">0</b></div>
+    <div class="stat"><span>Peso médio por animal</span><b id="media">0 kg</b></div>
+    <div class="stat big"><span>Peso total do lote</span><b id="total">0 kg</b></div>
+    <label class="price" style="grid-column:1/-1">Valor por kg (R$)<input id="preco" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+    <div class="stat"><span>Valor médio por animal</span><b id="vmedio">R$ 0,00</b></div>
+    <div class="stat"><span>Valor total do lote</span><b id="vtotal">R$ 0,00</b></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="head"><h2>Animais pesados</h2><button class="clear" id="clear">Limpar lote</button></div>
+  <ul id="lista"></ul>
+  <p class="empty" id="vazio">Digite o peso e toque em Anotar peso.</p>
+  <div class="exp" id="exp" hidden><button id="bpdf">Exportar PDF</button><button id="bxls">Exportar Excel</button></div>
+</section>
+</main>
+
+<script>
+var KEY="pesagem-gado-v1", animais=[], preco=0, armed=false;
+function load(){try{var d=JSON.parse(localStorage.getItem(KEY)||"null");if(d){animais=d.animais||[];preco=d.preco||0}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({animais:animais,preco:preco}))}catch(e){}}
+function num(s){var n=parseFloat(String(s).replace(/\./g,function(m,i,str){return str.indexOf(",")>-1?"":m}).replace(",","."));return isFinite(n)?n:0}
+var f1=new Intl.NumberFormat("pt-BR",{maximumFractionDigits:1});
+var fm=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+var $=function(i){return document.getElementById(i)};
+function render(){
+  var tot=animais.reduce(function(s,a){return s+a.peso},0), q=animais.length;
+  $("qtd").textContent=q;
+  $("total").textContent=f1.format(tot)+" kg";
+  $("media").textContent=(q?f1.format(tot/q):"0")+" kg";
+  $("vtotal").textContent=fm.format(tot*preco);
+  $("vmedio").textContent=fm.format(q?tot*preco/q:0);
+  var ul=$("lista");ul.innerHTML="";
+  animais.slice().reverse().forEach(function(a){
+    var li=document.createElement("li");
+    var n=document.createElement("span");n.className="n";n.textContent=a.id;
+    var w=document.createElement("span");w.className="w";w.textContent=f1.format(a.peso)+" kg";
+    var v=document.createElement("span");v.className="v";v.textContent=fm.format(a.peso*preco);
+    var b=document.createElement("button");b.className="del";b.textContent="×";b.setAttribute("aria-label","Apagar "+a.id);
+    b.onclick=function(){animais=animais.filter(function(x){return x!==a});save();render()};
+    li.append(n,w,v,b);ul.appendChild(li);
+  });
+  $("vazio").style.display=q?"none":"block";
+  $("clear").style.display=q?"":"none";
+  $("exp").hidden=!q;
+}
+function add(){
+  var p=num($("peso").value);
+  if(p<=0){$("peso").focus();return}
+  var id=$("id").value.trim()||("Animal "+(animais.length+1));
+  animais.push({id:id,peso:p});
+  $("id").value="";$("peso").value="";save();render();$("peso").focus();
+}
+$("add").onclick=add;
+$("peso").onkeydown=$("id").onkeydown=function(e){if(e.key==="Enter")add()};
+$("preco").oninput=function(){preco=num(this.value);save();render()};
+$("clear").onclick=function(){
+  if(!armed){armed=true;this.textContent="Toque de novo para apagar";setTimeout(function(){armed=false;$("clear").textContent="Limpar lote"},3000);return}
+  armed=false;animais=[];save();render();this.textContent="Limpar lote";
+};
+var dl=null;
+function totais(){var s=animais.reduce(function(a,x){return a+x.peso},0),q=animais.length;return{q:q,s:s,m:q?s/q:0,vt:s*preco,vm:q?s*preco/q:0}}
+function dia(){return new Date().toLocaleDateString("sv-SE")}
+function tx(s){return String(s).replace(/\s/g," ")}
+var XLS="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",PDFJS="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+function lib(src,test){return new Promise(function(ok,no){if(test()){ok();return}var s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+function baixar(nome,data){
+  if(dl){dl.save({filename:nome,data:data}).catch(function(){});return}
+  var b=data instanceof Blob?data:new Blob([data]),u=URL.createObjectURL(b),a=document.createElement("a");
+  a.href=u;a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+}
+function csv(){var t=totais(),n=function(x){return String(x).replace(".",",")},r=["Brinco ou nome;Peso (kg);Valor (R$)"];animais.forEach(function(a){r.push([a.id.replace(/;/g,","),n(a.peso),n((a.peso*preco).toFixed(2))].join(";"))});r.push("","Peso total (kg);"+n(t.s),"Valor total (R$);"+n(t.vt.toFixed(2)));baixar("pesagem-lote-"+dia()+".csv","\ufeff"+r.join("\r\n"))}
+$("bxls").onclick=function(){lib(XLS,function(){return window.XLSX}).then(gerarXlsx).catch(csv)};
+function gerarXlsx(){
+  var t=totais(),rows=[["Brinco ou nome","Peso (kg)","Valor (R$)"]];
+  animais.forEach(function(a){rows.push([a.id,a.peso,a.peso*preco])});
+  rows.push([],["Animais",t.q],["Peso total (kg)",t.s],["Peso médio por animal (kg)",t.m],["Valor por kg (R$)",preco],["Valor médio por animal (R$)",t.vm],["Valor total do lote (R$)",t.vt]);
+  var ws=XLSX.utils.aoa_to_sheet(rows),wb=XLSX.utils.book_new();
+  ws["!cols"]=[{wch:30},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,"Pesagem");
+  baixar("pesagem-lote-"+dia()+".xlsx",XLSX.write(wb,{type:"array",bookType:"xlsx"}));
+}
+$("bpdf").onclick=function(){lib(PDFJS,function(){return window.jspdf}).then(gerarPdf).catch(function(){var b=$("bpdf");b.textContent="PDF indisponível sem internet";setTimeout(function(){b.textContent="Exportar PDF"},3000)})};
+function gerarPdf(){
+  var d=new window.jspdf.jsPDF({unit:"mm",format:"a4"}),L=15,y=18,t=totais();
+  d.setFont("helvetica","bold");d.setFontSize(16);d.text("Pesagem do lote",L,y);y+=7;
+  d.setFont("helvetica","normal");d.setFontSize(10);d.text(new Date().toLocaleDateString("pt-BR"),L,y);y+=9;
+  d.setFontSize(11);
+  [["Animais",String(t.q)],["Peso total do lote",f1.format(t.s)+" kg"],["Peso médio por animal",f1.format(t.m)+" kg"],["Valor por kg",fm.format(preco)],["Valor médio por animal",fm.format(t.vm)],["Valor total do lote",fm.format(t.vt)]].forEach(function(r){d.text(r[0],L,y);d.text(tx(r[1]),95,y,{align:"right"});y+=6});
+  y+=6;
+  function cab(){d.setFont("helvetica","bold");d.text("Brinco ou nome",L,y);d.text("Peso",125,y,{align:"right"});d.text("Valor",195,y,{align:"right"});d.line(L,y+2,195,y+2);y+=8;d.setFont("helvetica","normal")}
+  cab();
+  animais.forEach(function(a){
+    if(y>280){d.addPage();y=18;cab()}
+    d.text(tx(a.id).slice(0,45),L,y);d.text(tx(f1.format(a.peso))+" kg",125,y,{align:"right"});d.text(tx(fm.format(a.peso*preco)),195,y,{align:"right"});y+=6;
+  });
+  baixar("pesagem-lote-"+dia()+".pdf",d.output("arraybuffer"));
+}
+if(window.claude&&claude.use){claude.use("downloads").then(function(x){dl=x;render()}).catch(function(){})}
+function lerLote(txt){
+  var ok=[],ruim=[],rep=[],vistos={};
+  animais.forEach(function(a){vistos[a.id.toLowerCase()]=1});
+  txt.split(/\r?\n/).forEach(function(l){
+    var t=l.trim();
+    if(!t||!/\d/.test(t))return;
+    var m=t.match(/^(?:(.*?)[\s\-\u2013:;,=]+)?(\d+(?:[.,]\d+)?)\s*(?:kg)?$/i);
+    var p=m?num(m[2]):0;
+    if(!m||p<20||p>2000){ruim.push(l);return}
+    var id=(m[1]||"").trim().replace(/^["']+|["']+$/g,"");
+    if(id){var k=id.toLowerCase();if(vistos[k]){rep.push(l);return}vistos[k]=1}
+    ok.push({id:id,peso:p});
+  });
+  return{ok:ok,ruim:ruim,rep:rep};
+}
+function previa(){
+  var r=lerLote($("lote").value),s=r.ok.reduce(function(a,x){return a+x.peso},0),msg=[];
+  if(r.ok.length)msg.push("Prontos para importar: "+r.ok.length+" ("+f1.format(s)+" kg)");
+  if(r.rep.length)msg.push(r.rep.length+" com brinco repetido, serão ignorados");
+  if(r.ruim.length)msg.push(r.ruim.length+" não entendidas: "+r.ruim.slice(0,3).join(" | ")+(r.ruim.length>3?"…":""));
+  $("prev").textContent=msg.join(" · ");
+  $("imp").disabled=!r.ok.length;
+}
+$("lote").oninput=previa;
+$("arq").onchange=function(){
+  var f=this.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){var v=$("lote").value;$("lote").value=(v&&!/\n$/.test(v)?v+"\n":v)+String(rd.result).replace(/^\ufeff/,"");previa()};
+  rd.readAsText(f);this.value="";
+};
+$("imp").onclick=function(){
+  var r=lerLote($("lote").value);if(!r.ok.length)return;
+  r.ok.forEach(function(a){animais.push({id:a.id||("Animal "+(animais.length+1)),peso:a.peso})});
+  var resto=r.rep.concat(r.ruim);
+  $("lote").value=resto.join("\n");
+  save();render();previa();
+  $("impmsg").textContent=r.ok.length+" animais importados."+(resto.length?" As linhas que não entraram ficaram na caixa para você corrigir.":"");
+};
+(function(){
+  var PROMPT="Esta foto é uma folha manuscrita de pesagem de gado. Cada linha tem um brinco (letra e números, ex.: D6742 ou P6448) e um peso em kg. Transcreva uma linha por animal no formato BRINCO PESO, com só o número no peso, sem unidade. Ignore a data, linhas riscadas e anotações como piquete. Se um número estiver rabiscado ou duvidoso, escolha o mais provável. Responda só com as linhas, sem comentários. Se não houver pesos, responda NENHUM.";
+  var ERR={not_granted:"Você não permitiu usar o Claude nesta página.",rate_limited:"Muitas tentativas. Tente de novo daqui a pouco.",image_rejected:"Essa foto não foi aceita. Tente outra.",refused:"Não consegui ler essa foto."};
+  $("fotoarq").onchange=function(){this.value="";$("fotomsg").textContent="A leitura de foto só funciona abrindo o app pelo link do claude.ai, dentro do Claude. Em cópia salva ou fora do Claude ela fica indisponível."};
+  if(!window.claude||!claude.use)return;
+  claude.use("sample").then(function(sample){
+    if(!sample)return;
+    return Promise.resolve(sample.limits()).then(function(l){
+      if(!l||!l.images)return;
+      $("foto").hidden=false;
+      if(l.images.mediaTypes&&l.images.mediaTypes.length)$("fotoarq").accept=l.images.mediaTypes.join(",");
+      $("fotoarq").onchange=function(){
+        var f=this.files[0];this.value="";if(!f)return;
+        var msg=$("fotomsg");msg.textContent="Lendo a foto…";
+        sample(PROMPT,{images:[f],modelTier:"default"}).then(function(r){
+          var t=String(r.text||"").replace(/```[a-z]*/gi,"").trim();
+          if(!t||/^NENHUM/i.test(t)){msg.textContent="Não encontrei pesos nessa foto.";return}
+          var v=$("lote").value;
+          $("lote").value=(v&&!/\n$/.test(v)?v+"\n":v)+t;
+          previa();
+          msg.textContent="Foto lida. Confira os números na caixa antes de importar.";
+        }).catch(function(e){msg.textContent=ERR[e&&e.code]||"Não deu certo. Tente de novo."});
+      };
+    });
+  }).catch(function(){});
+})();
+load();if(preco)$("preco").value=String(preco).replace(".",",");render();
+</script>
+</body>
+</html>
